@@ -6,12 +6,12 @@ A fullstack project management app for managing projects, tasks, and team member
 
 ## Assessment submission
 
-| Item | Link / path |
-|------|-------------|
-| Repository | `<your-github-repo-url>` |
-| Screen recording | `<loom-or-recording-url>` |
-| Code review | [REVIEW.md](./REVIEW.md) |
-| Terminal log | [TERMINAL_LOG.md](./TERMINAL_LOG.md) |
+| Item             | Link / path                                                   |
+| ---------------- | ------------------------------------------------------------- |
+| Repository       | `https://github.com/shashankshrivastava0211/q-taskboard`      |
+| Screen recording | `https://www.loom.com/share/f7b9eb8f018540e5b467251dda73cefd` |
+| Code review      | [REVIEW.md](./REVIEW.md)                                      |
+| Terminal log     | [TERMINAL_LOG.md](./TERMINAL_LOG.md)                          |
 
 ## Quick Setup (Docker — Recommended)
 
@@ -66,6 +66,7 @@ npm run dev
 This is part of the Ajackus evaluation process. We evaluate how you collaborate with AI tools — your prompting strategy, how you break down problems, and how you review AI suggestions. The captured conversations help us understand your workflow.
 
 **How it works:**
+
 - A pre-commit git hook runs automatically before each commit
 - It copies conversation files from AI tool directories (e.g., `.claude/`, `.cursor/`) into `.ai-conversations/`
 - These files are staged and included in your commit
@@ -79,13 +80,13 @@ This is part of the Ajackus evaluation process. We evaluate how you collaborate 
 
 All user passwords are: `password123`
 
-| Email | Role |
-|-------|------|
+| Email               | Role                                                      |
+| ------------------- | --------------------------------------------------------- |
 | meera@taskboard.dev | admin on Q3 Launch & Internal Tools, member on Onboarding |
-| arjun@taskboard.dev | admin on Onboarding, member on Q3 Launch |
-| kavya@example.com | member on Q3 Launch |
-| dev@example.com | viewer on Q3 Launch |
-| lina@example.com | member on Onboarding |
+| arjun@taskboard.dev | admin on Onboarding, member on Q3 Launch                  |
+| kavya@example.com   | member on Q3 Launch                                       |
+| dev@example.com     | viewer on Q3 Launch                                       |
+| lina@example.com    | member on Onboarding                                      |
 
 ## Authentication
 
@@ -102,11 +103,13 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/api/projects
 ## API Endpoints
 
 ### Auth
+
 - `POST /api/auth/register` — Create account
 - `POST /api/auth/login` — Sign in, get JWT
 - `GET /api/users/me` — Current user (authenticated)
 
 ### Projects
+
 - `GET /api/projects` — List projects you're a member of (authenticated)
 - `POST /api/projects` — Create a project (authenticated; creator becomes admin)
 - `GET /api/projects/:id` — Project detail with tasks and members (authenticated)
@@ -114,12 +117,14 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/api/projects
 - `DELETE /api/projects/:id` — Delete project (admin only)
 
 ### Tasks
+
 - `GET /api/projects/:id/tasks` — List tasks in a project; supports `?q=` search (authenticated)
 - `POST /api/projects/:id/tasks` — Create a task (admin or member)
 - `PATCH /api/tasks/:id` — Update a task (authenticated)
 - `DELETE /api/tasks/:id` — Delete a task (admin or member)
 
 ### Export
+
 - `POST /api/projects/:id/export` — Export tasks to Airtable (admin or member)
 
 ## Airtable Export (Part 3c)
@@ -136,16 +141,16 @@ The backend uses `pyairtable` for real API calls. `backend/projects/airtable_moc
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, Vite 5, TypeScript 5 (strict) |
-| Routing | React Router 6 |
-| Data fetching | TanStack Query 5 |
-| Styling | Tailwind CSS 3 |
-| Frontend tests | Vitest 2 + Testing Library |
-| Backend | Django 5, Django REST Framework 3 |
-| Auth | djangorestframework-simplejwt (JWT, 30-day tokens) |
-| ORM | Django ORM |
-| Database | PostgreSQL 16 |
-| Backend tests | pytest-django |
-| Container | Docker + docker-compose |
+| Layer          | Technology                                         |
+| -------------- | -------------------------------------------------- |
+| Frontend       | React 18, Vite 5, TypeScript 5 (strict)            |
+| Routing        | React Router 6                                     |
+| Data fetching  | TanStack Query 5                                   |
+| Styling        | Tailwind CSS 3                                     |
+| Frontend tests | Vitest 2 + Testing Library                         |
+| Backend        | Django 5, Django REST Framework 3                  |
+| Auth           | djangorestframework-simplejwt (JWT, 30-day tokens) |
+| ORM            | Django ORM                                         |
+| Database       | PostgreSQL 16                                      |
+| Backend tests  | pytest-django                                      |
+| Container      | Docker + docker-compose                            |
