@@ -4,6 +4,15 @@ A fullstack project management app for managing projects, tasks, and team member
 
 **Tech Stack:** React 18 + Vite + TypeScript (frontend) · Django 5 + Django REST Framework + SimpleJWT (backend) · PostgreSQL 16
 
+## Assessment submission
+
+| Item | Link / path |
+|------|-------------|
+| Repository | `<your-github-repo-url>` |
+| Screen recording | `<loom-or-recording-url>` |
+| Code review | [REVIEW.md](./REVIEW.md) |
+| Terminal log | [TERMINAL_LOG.md](./TERMINAL_LOG.md) |
+
 ## Quick Setup (Docker — Recommended)
 
 ```bash
