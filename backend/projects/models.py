@@ -54,6 +54,7 @@ class Task(models.Model):
         related_name='created_tasks',
     )
     position = models.IntegerField(default=0)
+    airtable_record_id = models.CharField(max_length=64, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

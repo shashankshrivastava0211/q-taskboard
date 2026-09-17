@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, getToken } from "@/lib/api-client";
+import { apiFetch, getToken, getStoredUser } from "@/lib/api-client";
 import { Header } from "@/components/Header";
 import { StatusColumn } from "@/components/StatusColumn";
 import { TaskDetail } from "@/components/TaskDetail";
-import type { ApiProjectDetail, ApiTask, TaskStatus } from "@/types";
+import { ExportTasksButton } from "@/components/ExportTasksButton";
+import type { ApiProjectDetail, ApiTask, TaskStatus, Role } from "@/types";
 import { STATUS_ORDER } from "@/types";
 
 export default function ProjectPage() {
@@ -41,6 +42,9 @@ export default function ProjectPage() {
   });
 
   const project = data?.project;
+  const currentUserId = getStoredUser()?.id;
+  const currentRole: Role =
+    project?.memberships.find((m) => m.user.id === currentUserId)?.role ?? "viewer";
   const tasksByStatus: Record<TaskStatus, ApiTask[]> = {
     todo: [],
     in_progress: [],
@@ -74,7 +78,7 @@ export default function ProjectPage() {
 
         {project && (
           <>
-            <div className="flex items-start justify-between mt-4 mb-8">
+            <div className="flex items-start justify-between mt-4 mb-8 gap-4">
               <div>
                 <h1 className="text-2xl font-semibold">{project.name}</h1>
                 {project.description && (
@@ -86,6 +90,10 @@ export default function ProjectPage() {
                   owner: {project.owner.name} · {project.memberships.length} members
                 </p>
               </div>
+              <ExportTasksButton
+                projectId={id!}
+                canExport={currentRole === "admin" || currentRole === "member"}
+              />
             </div>
 
             <section className="bg-surface border border-border rounded-lg p-4 mb-6">

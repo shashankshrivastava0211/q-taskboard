@@ -234,8 +234,29 @@ class ExportView(APIView):
         if not _can_edit_tasks(membership.role):
             return Response({'error': 'only admins and members can export'}, status=status.HTTP_403_FORBIDDEN)
 
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            return Response({'error': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+
         tasks = Task.objects.filter(project_id=project_id).select_related('assignee', 'created_by')
-        return Response({'exported': 0, 'tasks': TaskSerializer(tasks, many=True).data})
+        from .airtable_export import export_project_tasks
+        from .airtable_mock import PermanentAirtableError
+
+        try:
+            result = export_project_tasks(project, tasks)
+        except PermanentAirtableError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:  # noqa: BLE001 — always return JSON to the SPA
+            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'exported': result['exported'],
+            'created': result['created'],
+            'updated': result['updated'],
+            'failed': result['failed'],
+            'tasks': TaskSerializer(tasks, many=True).data,
+        })
 
 
 class TaskCommentListCreateView(APIView):

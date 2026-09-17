@@ -19,14 +19,19 @@ services:
       - "8000:8000"
     depends_on:
       - db
+    env_file:
+      - .env
     environment:
       POSTGRES_DB: taskboard
       POSTGRES_USER: taskboard
       POSTGRES_PASSWORD: taskboard
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
-      DJANGO_SECRET_KEY: dev-secret-change-me
-      DEBUG: "true"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-secret-change-me}
+      DEBUG: ${DEBUG:-true}
+      AIRTABLE_API_KEY: ${AIRTABLE_API_KEY:-}
+      AIRTABLE_BASE_ID: ${AIRTABLE_BASE_ID:-}
+      AIRTABLE_TABLE_NAME: ${AIRTABLE_TABLE_NAME:-Tasks}
 
   frontend:
     build: ./frontend

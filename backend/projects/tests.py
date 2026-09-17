@@ -226,3 +226,105 @@ class TestComments:
             format='json',
         ).status_code == 404
         assert auth_client.delete(f'/api/tasks/{comment_id}').status_code == 404
+
+
+@pytest.mark.django_db
+class TestExport:
+    def test_viewer_cannot_export(self, client, user):
+        owner = User.objects.create_user(email='owner@example.com', name='Owner', password='password123')
+        project = Project.objects.create(name='P', owner=owner)
+        Membership.objects.create(user=owner, project=project, role='admin')
+        Membership.objects.create(user=user, project=project, role='viewer')
+
+        resp = client.post('/api/auth/login', {
+            'email': 'meera@taskboard.dev',
+            'password': 'password123',
+        }, format='json')
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['token']}")
+
+        response = client.post(f'/api/projects/{project.id}/export')
+        assert response.status_code == 403
+
+    def test_member_export_is_idempotent_with_mock_client(self, auth_client, user, monkeypatch):
+        from projects.airtable_mock import MockAirtableClient
+        from projects.airtable_export import export_project_tasks, call_with_retry
+
+        mock = MockAirtableClient()
+        monkeypatch.setattr('projects.airtable_export.get_airtable_client', lambda: mock)
+        monkeypatch.setattr(
+            'projects.airtable_export.call_with_retry',
+            lambda fn, retries=3, delay=0.05: call_with_retry(fn, retries=retries, delay=0),
+        )
+
+        project = Project.objects.create(name='P', owner=user)
+        Membership.objects.create(user=user, project=project, role='member')
+        t1 = Task.objects.create(project=project, title='Task one', created_by=user)
+        Task.objects.create(project=project, title='Task two', created_by=user)
+
+        first = auth_client.post(f'/api/projects/{project.id}/export')
+        assert first.status_code == 200
+        assert first.data['exported'] == 2
+        assert first.data['created'] == 2
+        assert first.data['updated'] == 0
+        assert first.data['failed'] == []
+        assert mock.create_calls == 2
+
+        t1.refresh_from_db()
+        assert t1.airtable_record_id
+
+        second = auth_client.post(f'/api/projects/{project.id}/export')
+        assert second.status_code == 200
+        assert second.data['exported'] == 2
+        assert second.data['created'] == 0
+        assert second.data['updated'] == 2
+        assert mock.update_calls == 2
+        assert len(mock.records) == 2
+
+    def test_partial_failure_does_not_abort_export(self, user):
+        from projects.airtable_mock import MockAirtableClient
+        from projects.airtable_export import export_project_tasks
+
+        project = Project.objects.create(name='P', owner=user)
+        good = Task.objects.create(project=project, title='Good task', created_by=user)
+        bad = Task.objects.create(project=project, title='Bad task', created_by=user)
+
+        mock = MockAirtableClient()
+        mock.fail_on_create_titles.add('Bad task')
+
+        result = export_project_tasks(
+            project,
+            Task.objects.filter(project=project).order_by('created_at'),
+            client=mock,
+        )
+        assert result['exported'] == 1
+        assert result['created'] == 1
+        assert len(result['failed']) == 1
+        assert result['failed'][0]['task_id'] == str(bad.id)
+        good.refresh_from_db()
+        bad.refresh_from_db()
+        assert good.airtable_record_id
+        assert bad.airtable_record_id is None
+
+    def test_retries_transient_errors_then_succeeds(self, user):
+        from projects.airtable_mock import MockAirtableClient
+        from projects.airtable_export import export_project_tasks
+        import projects.airtable_export as export_mod
+
+        project = Project.objects.create(name='P', owner=user)
+        task = Task.objects.create(project=project, title='Flaky task', created_by=user)
+
+        mock = MockAirtableClient()
+        mock.transient_failures_before_success = 2
+
+        original = export_mod.call_with_retry
+        export_mod.call_with_retry = lambda fn, retries=3, delay=0.05: original(fn, retries=retries, delay=0)
+        try:
+            result = export_project_tasks(project, [task], client=mock)
+        finally:
+            export_mod.call_with_retry = original
+
+        assert result['exported'] == 1
+        assert result['failed'] == []
+        assert mock.create_calls == 1
+        task.refresh_from_db()
+        assert task.airtable_record_id
