@@ -97,3 +97,33 @@ class TestTasks:
 
         response = client.delete(f'/api/tasks/{task.id}')
         assert response.status_code == 403
+
+    def test_search_returns_matching_tasks_in_own_project(self, auth_client, user):
+        project = Project.objects.create(name='Mine', owner=user)
+        Membership.objects.create(user=user, project=project, role='admin')
+        Task.objects.create(project=project, title='Set up analytics dashboards', created_by=user)
+        Task.objects.create(project=project, title='Draft press release', created_by=user)
+
+        response = auth_client.get(f'/api/projects/{project.id}/tasks', {'q': 'analytics'})
+        assert response.status_code == 200
+        titles = [t['title'] for t in response.data['tasks']]
+        assert titles == ['Set up analytics dashboards']
+
+    def test_search_injection_cannot_leak_other_project_tasks(self, auth_client, user):
+        mine = Project.objects.create(name='Mine', owner=user)
+        Membership.objects.create(user=user, project=mine, role='admin')
+        Task.objects.create(project=mine, title='My only task', created_by=user)
+
+        other = User.objects.create_user(email='other@example.com', name='Other', password='password123')
+        theirs = Project.objects.create(name='Theirs', owner=other)
+        Membership.objects.create(user=other, project=theirs, role='admin')
+        Task.objects.create(project=theirs, title='Secret other project task', created_by=other)
+
+        response = auth_client.get(
+            f'/api/projects/{mine.id}/tasks',
+            {'q': "x') OR 1=1 --"},
+        )
+        assert response.status_code == 200
+        titles = [t['title'] for t in response.data['tasks']]
+        assert 'Secret other project task' not in titles
+        assert all(str(t['project_id']) == str(mine.id) for t in response.data['tasks'])
