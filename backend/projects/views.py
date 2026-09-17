@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
 from users.serializers import UserSerializer
-from .models import Project, Membership, Task
-from .serializers import ProjectDetailSerializer, TaskSerializer
+from .models import Project, Membership, Task, Comment
+from .serializers import ProjectDetailSerializer, TaskSerializer, CommentSerializer
 
 
 def _get_membership(user, project_id):
@@ -16,6 +16,17 @@ def _get_membership(user, project_id):
 
 def _can_edit_tasks(role):
     return role in ('admin', 'member')
+
+
+def _task_membership_or_error(user, task_id):
+    try:
+        task = Task.objects.select_related('project').get(id=task_id)
+    except Task.DoesNotExist:
+        return None, None, Response({'error': 'not found'}, status=status.HTTP_404_NOT_FOUND)
+    membership = _get_membership(user, str(task.project_id))
+    if not membership:
+        return None, None, Response({'error': 'forbidden'}, status=status.HTTP_403_FORBIDDEN)
+    return task, membership, None
 
 
 class ProjectListCreateView(APIView):
@@ -225,3 +236,33 @@ class ExportView(APIView):
 
         tasks = Task.objects.filter(project_id=project_id).select_related('assignee', 'created_by')
         return Response({'exported': 0, 'tasks': TaskSerializer(tasks, many=True).data})
+
+
+class TaskCommentListCreateView(APIView):
+    def get(self, request, task_id):
+        task, membership, err = _task_membership_or_error(request.user, task_id)
+        if err:
+            return err
+
+        comments = (
+            Comment.objects
+            .filter(task=task)
+            .select_related('author')
+            .order_by('created_at')
+        )
+        return Response({'comments': CommentSerializer(comments, many=True).data})
+
+    def post(self, request, task_id):
+        task, membership, err = _task_membership_or_error(request.user, task_id)
+        if err:
+            return err
+        if not _can_edit_tasks(membership.role):
+            return Response({'error': 'viewers cannot post comments'}, status=status.HTTP_403_FORBIDDEN)
+
+        body = (request.data.get('body') or '').strip()
+        if not body:
+            return Response({'error': 'body is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        comment = Comment.objects.create(task=task, author=request.user, body=body)
+        comment = Comment.objects.select_related('author').get(id=comment.id)
+        return Response({'comment': CommentSerializer(comment).data}, status=status.HTTP_201_CREATED)
